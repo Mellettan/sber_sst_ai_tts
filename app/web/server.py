@@ -135,7 +135,7 @@ async def root():
         </style>
     </head>
     <body>
-        <h1>Добро пожаловать!</h1>
+        <h1>Нажми!</h1>
         <p>Нажмите кнопку, чтобы перейти к интерфейсу голосового ассистента.</p>
         <button onclick="location.href='/static/index.html'">Перейти</button>
     </body>
