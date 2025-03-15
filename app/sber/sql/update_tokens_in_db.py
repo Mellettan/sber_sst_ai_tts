@@ -21,7 +21,7 @@ urllib3.disable_warnings(
 
 
 @logger.catch
-def update_tokens_if_needed():
+def update_tokens_if_needed() -> None:
     # Подключаемся к базе данных
     db_path = os.path.join(os.path.dirname(__file__), "..", "sber.db")
     conn = sqlite3.connect(db_path)

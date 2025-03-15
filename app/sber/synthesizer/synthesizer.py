@@ -5,7 +5,7 @@ from app.sber.sql.get_tokens_from_db import get_token_from_db
 
 
 @logger.catch
-def synthesize_speech(text, format="wav16", voice="Bys_24000"):
+def synthesize_speech(text, format="wav16", voice="Bys_24000") -> bytes:
     url = "https://smartspeech.sber.ru/rest/v1/text:synthesize"
     headers = {
         "Authorization": f"Bearer {get_token_from_db('salute_speech').get('token')}",

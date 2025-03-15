@@ -7,7 +7,7 @@ from app.const import TEMPLATE, MODEL
 
 
 @logger.catch
-def initialize_ai_agent(gigachat_token, model=MODEL):
+def initialize_ai_agent(gigachat_token, model=MODEL) -> ConversationChain:
     llm = GigaChat(access_token=gigachat_token, verify_ssl_certs=False, model=model)
     conversation = ConversationChain(
         llm=llm,
@@ -19,7 +19,7 @@ def initialize_ai_agent(gigachat_token, model=MODEL):
 
 
 @logger.catch
-def analyze_text(text: str, conversation):
+def analyze_text(text: str, conversation) -> str:
     """Анализ текста с помощью AI-агента."""
     response = conversation.predict(input=text)
     logger.success(f"AI analysis result: {response}")

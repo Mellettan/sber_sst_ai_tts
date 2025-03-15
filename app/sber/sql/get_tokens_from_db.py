@@ -5,7 +5,7 @@ from loguru import logger
 
 
 @logger.catch
-def get_token_from_db(token_name):
+def get_token_from_db(token_name) -> dict | None:
     """
     Получает конкретный токен из таблицы tokens по его имени.
 

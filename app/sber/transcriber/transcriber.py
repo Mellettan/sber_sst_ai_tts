@@ -1,5 +1,6 @@
 import itertools
 import os
+from typing import Generator
 
 import redis
 
@@ -11,11 +12,8 @@ from app.sber.transcriber import recognition_pb2, recognition_pb2_grpc
 
 SAMPLE_RATE = 16000
 output_file = "output.pcm"
-# Получаем путь к текущему файлу (transcriber.py)
 current_file = os.path.abspath(__file__)
-# Находим корень проекта (root/), поднявшись на три уровня вверх
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
-# Формируем путь к rta_ca.pem
 cert_path = os.path.join(project_root, "rtr_ca.pem")
 SALUTE_SPEECH_TOKEN = get_token_from_db("salute_speech").get("token")
 
@@ -104,7 +102,7 @@ class Arguments:
 r = redis.StrictRedis(host="redis")
 
 
-def generate_audio_chunks_from_redis():
+def generate_audio_chunks_from_redis() -> Generator[recognition_pb2.RecognitionRequest, None, None]:
     """Генератор, который читает аудиоданные из Redis."""
     logger.info("Starting to read audio chunks from Redis...")
     while True:
@@ -117,7 +115,7 @@ def generate_audio_chunks_from_redis():
         yield recognition_pb2.RecognitionRequest(audio_chunk=audio_data)
 
 
-def recognize():
+def recognize() -> None:
     args = Arguments()
     args.host = "smartspeech.sber.ru"
     args.ca = cert_path

@@ -3,8 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Poetry (vocode_main)" />
   </component>
-  <component name="GitLabDefaultAccount">
-    <option name="defaultAccountId" value="ec8b8875-3546-44ea-bc94-c447d29b7aca" />
-  </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Poetry (vocode_main)" project-jdk-type="Python SDK" />
 </project>

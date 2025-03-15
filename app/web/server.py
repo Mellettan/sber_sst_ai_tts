@@ -23,7 +23,7 @@ r = redis.StrictRedis(host="redis")
 
 
 @app.websocket("/ws/recognize/")
-async def websocket_recognize(websocket: WebSocket):
+async def websocket_recognize(websocket: WebSocket) -> None:
     update_tokens_if_needed()
     r.flushdb()  # noqa - no await
     await websocket.accept()
@@ -121,7 +121,7 @@ async def websocket_recognize(websocket: WebSocket):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def root():
+async def root() -> str:
     return """
     <!DOCTYPE html>
     <html lang="ru">
