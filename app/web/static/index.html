@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STT-AI-TTS</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #chat-container { 
+            max-width: 600px;
+            margin: 0 auto; 
+            border: 1px solid #ccc; 
+            padding: 10px; 
+            height: 400px; 
+            overflow-y: auto;
+            border-radius: 10px;
+        }
+        .message { 
+            margin: 10px 0; 
+            padding: 8px; 
+            border-radius: 5px; 
+            display: inline-block;
+            max-width: 80%;
+        }
+        .user-message { 
+            background-color: #e3f2fd; 
+            float: right;
+            clear: both;
+        }
+        .bot-message { 
+            background-color: #f1f1f1; 
+            float: left;
+            clear: both;
+        }
+        button { 
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Голосовой ассистент</h1>
+    <div id="chat-container"></div>
+    <div style="text-align: center;">
+        <button id="start-btn">🎤 Начать запись</button>
+        <button id="stop-btn" disabled>⏹ Остановить</button>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let ws;
+        let isAudioPlaying = false;
+        let currentTranscriptionDiv = null; // Текущее сообщение для стриминга
+
+        const chatContainer = document.getElementById("chat-container");
+
+        function updateOrCreateTranscription(text, isFinal = false) {
+            if (!currentTranscriptionDiv) {
+                // Создаём новое сообщение, если его ещё нет
+                currentTranscriptionDiv = document.createElement("div");
+                currentTranscriptionDiv.classList.add("message", "user-message");
+                chatContainer.appendChild(currentTranscriptionDiv);
+            }
+            // Обновляем текст текущего сообщения
+            currentTranscriptionDiv.textContent = text;
+
+            if (isFinal) {
+                // Если это финальная транскрипция, оставляем сообщение и сбрасываем currentTranscriptionDiv
+                currentTranscriptionDiv = null;
+            }
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Прокрутка вниз
+        }
+
+        function addBotMessage(text) {
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("message", "bot-message");
+            messageDiv.textContent = text;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Прокрутка вниз
+        }
+
+        document.getElementById("start-btn").addEventListener("click", async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new AudioContext({ sampleRate: 16000 });
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+            const wsUrl = `wss://${window.location.host}/ws/recognize/`;
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log("WebSocket connection established.");
+
+                processor.onaudioprocess = (event) => {
+                    if (!isAudioPlaying && ws.readyState === WebSocket.OPEN) {
+                        const inputData = event.inputBuffer.getChannelData(0);
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32767));
+                        }
+                        ws.send(pcmData.buffer);
+                        console.log("Audio data sent to WebSocket.");
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                document.getElementById("start-btn").disabled = true;
+                document.getElementById("stop-btn").disabled = false;
+            };
+
+            ws.onerror = (error) => {
+                console.error("WebSocket error:", error);
+            };
+
+            ws.onclose = () => {
+                console.log("WebSocket connection closed.");
+                processor.disconnect();
+                source.disconnect();
+                audioContext.close();
+                document.getElementById("start-btn").disabled = false;
+                document.getElementById("stop-btn").disabled = true;
+            };
+
+            ws.onmessage = (event) => {
+                if (typeof event.data === "string") {
+                    const message = JSON.parse(event.data);
+                    if (message.type === "transcription") {
+                        if (message.status === "streaming") {
+                            // Обновляем текущее сообщение для стриминга
+                            updateOrCreateTranscription(message.text, false);
+                        } else if (message.status === "final") {
+                            // Финальная транскрипция — фиксируем её
+                            updateOrCreateTranscription(message.text, true);
+                        }
+                    } else if (message.type === "response") {
+                        // Добавляем сообщение от бота
+                        addBotMessage(message.text);
+                    }
+                } else {
+                    // Бинарные данные (аудио)
+                    event.data.arrayBuffer().then((buffer) => {
+                        const audioBlob = new Blob([buffer], { type: "audio/wav" });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        const audio = new Audio(audioUrl);
+
+                        isAudioPlaying = true;
+                        console.log("Starting audio playback, pausing audio data sending...");
+
+                        audio.play().then(() => {
+                            audio.onended = () => {
+                                isAudioPlaying = false;
+                                URL.revokeObjectURL(audioUrl);
+                                console.log("Audio playback finished, resuming audio data sending...");
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send("audio_playback_finished");
+                                }
+                            };
+                        }).catch((err) => {
+                            console.error("Error playing audio:", err);
+                            isAudioPlaying = false;
+                        });
+                    }).catch((err) => {
+                        console.error("Error converting blob to arrayBuffer:", err);
+                    });
+                }
+            };
+
+            document.getElementById("stop-btn").addEventListener("click", () => {
+                processor.disconnect();
+                source.disconnect();
+                audioContext.close();
+                ws.close();
+                document.getElementById("start-btn").disabled = false;
+                document.getElementById("stop-btn").disabled = true;
+            });
+        });
+    </script>
+</body>
+</html>
