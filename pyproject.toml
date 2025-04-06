@@ -22,7 +22,7 @@ dependencies = [
     "uvicorn (>=0.34.0,<0.35.0)",
     "redis (>=5.2.1,<6.0.0)",
     "black (>=25.1.0,<26.0.0)",
-    "protobuf (>=5.26.1,<6.0dev)"
+    "protobuf (>=5.26.1,<6.0dev)",
 ]
 
 [tool.poetry]
